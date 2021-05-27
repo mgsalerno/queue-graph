@@ -87,7 +87,7 @@ int add_edge(graph_t *g, vertex_t *v1, vertex_t *v2)
   }
 
   aux_edge->vertex = v2;
-  queue_append((queue_t **) &(v1->edges), (queue_t *) aux_edge); // inserts v2 em v1
+  queue_append((queue_t **) &(v1->edges), (queue_t *) aux_edge); // inserts v2 in v1
   v1->degree++;
 
   if (!(aux_edge = (edge_t *) malloc(sizeof(edge_t))))
@@ -97,7 +97,7 @@ int add_edge(graph_t *g, vertex_t *v1, vertex_t *v2)
   }
 
   aux_edge->vertex = v1;
-  queue_append((queue_t **) &(v2->edges), (queue_t *) aux_edge); // inserts v1 em v2
+  queue_append((queue_t **) &(v2->edges), (queue_t *) aux_edge); // inserts v1 in v2
   v2->degree++;
 
   return 1;
@@ -199,7 +199,7 @@ vertex_t *get_vertex_by_name(graph_t *g, char *name)
 
   for (unsigned int i = 0; i < queue_size((queue_t *) g->vertices); ++i)
   {
-    if (!strncmp(aux_vertex->name, name, strlen(name))) // if the vertex has that name 
+    if (!strncmp(aux_vertex->name, name, strlen(name))) // if the vertex has that name
       return aux_vertex;
 
     aux_vertex = aux_vertex->next;

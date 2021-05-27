@@ -73,7 +73,7 @@ queue_t *queue_remove (queue_t **queue, queue_t *elem)
     return NULL;
   }
 
-  if (aux == (*queue)) // if it is the beginning of the queue 
+  if (aux == (*queue)) // if it is the beginning of the queue
     (*queue) = aux->next == aux ? NULL : (*queue)->next; // if it is the only element in the queue
 
   elem->prev->next = elem->next;
