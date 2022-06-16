@@ -56,8 +56,6 @@ queue_t *queue_remove (queue_t **queue, queue_t *elem) ;
 
 unsigned int queue_size (queue_t *queue) ;
 
-queue_t *queue_search (queue_t **queue, queue_t *elem) ;
-
 /* ------------------------------------------------------------------------------ */
 
 #endif
