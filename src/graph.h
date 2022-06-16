@@ -3,7 +3,12 @@
 
 /* ------------------------------------------------------------------------------ */
 
-#define STRING_SIZE 4096
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+#include "queue.h"
 
 /* ------------------------------------------------------------------------------ */
 
@@ -14,14 +19,16 @@ typedef struct edge_t edge_t ;
 /* ------------------------------------------------------------------------------
  * structure: graph
  * ------------------------------------------------------------------------------
- * vertices: vertices in that graph
- * name: name of that graph
+ * vertices: graph vertices
+ * name: graph name
+ * size: graph size (number of vertices)
  * ------------------------------------------------------------------------------ */
 
 struct graph_t
 {
   vertex_t *vertices ;
   char *name ;
+  int size ;
 } ;
 
 /* ------------------------------------------------------------------------------
@@ -30,16 +37,18 @@ struct graph_t
  * prev: pointer to the previous vertex
  * next: pointer to the next vertex
  * edges: pointer to a list of edges that connect to the vertex
- * name: name of the vertex
- * degree: current degree of the vertex
+ * value: vertex value (generic)
+ * degree: current vertex degree
+ * id: vertex id (must be unique)
  * ------------------------------------------------------------------------------ */
 
 struct vertex_t
 {
   vertex_t *prev, *next ;
   edge_t *edges ;
-  char *name ;
+  int value ;
   int degree ;
+  int id ;
 } ;
 
 /* ------------------------------------------------------------------------------
@@ -47,7 +56,7 @@ struct vertex_t
  * ------------------------------------------------------------------------------
  * prev: pointer to the previous edge
  * next: pointer to the next edge
- * vertex: vertex connected to the edge
+ * vertex: vertex connected to this edge
  * ------------------------------------------------------------------------------ */
 
 struct edge_t
@@ -66,7 +75,7 @@ struct edge_t
  * returns: pointer to the created graph
  * ------------------------------------------------------------------------------ */
 
-graph_t *create_graph(char *name) ;
+graph_t *create_graph (char *name) ;
 
 /* ------------------------------------------------------------------------------
  * function: add_vertex
@@ -74,12 +83,13 @@ graph_t *create_graph(char *name) ;
  * inserts a vertex in the graph
  *
  * g: graph in which the vertex will be inserted
- * name: name of the vertex that will be inserted
+ * value: vertex value
+ * id: vertex id
  *
- * returns: 0 if an error has ocurred or 1 if no errors
+ * returns: pointer to the added vertex
  * ------------------------------------------------------------------------------ */
 
-int add_vertex(graph_t *g, char *name) ;
+vertex_t *add_vertex (graph_t *g, int value, int id) ;
 
 /* ------------------------------------------------------------------------------
  * function: remove_vertex
@@ -88,53 +98,55 @@ int add_vertex(graph_t *g, char *name) ;
  *
  * g: graph from which the vertex will be removed
  * v: vertex to be removed
+ * is_directed: indicates if the graph is directed (1) or not (0)
  *
- * returns: 0 if an error has ocurred or 1 if no errors
+ * returns: pointer to the removed vertex
  * ------------------------------------------------------------------------------ */
 
-int remove_vertex(graph_t *g, vertex_t *v) ;
+vertex_t *remove_vertex (graph_t *g, vertex_t *v, int is_directed) ;
 
 /* ------------------------------------------------------------------------------
  * function: add_edge
  * ------------------------------------------------------------------------------
- * inserts an edge between two vertices
+ * inserts an edge from v1 to v2. If the graph is undirected, this function
+ * must be called for both ends to create a bidirectional edge.
+ * Example: you need to add from A->B and from B->A.
  *
- * g: graph that the vertices belong to
- * v1: first vertex that will belong to that edge
- * v2: second vertex that will belong to that edge
+ * v1: vertex that will receive v2 in its neighbourhood
+ * v2: vertex that will be added to the neighbourhood of v1
  *
  * returns: 0 if an error has ocurred or 1 if no errors
  * ------------------------------------------------------------------------------ */
 
-int add_edge(graph_t *g, vertex_t *v1, vertex_t *v2) ;
+int add_edge (vertex_t *v1, vertex_t *v2) ;
 
 /* ------------------------------------------------------------------------------
  * function: remove_edge
  * ------------------------------------------------------------------------------
- * removes an edge between two vertices
+ * removes the edge from v1 to v2. If the graph is undirected, this function
+ * must be called for both ends to remove the edge for each node.
+ * Example: you need to remove from A->B and from B->A.
  *
- * g: graph that the vertices belong to
- * v1: first vertex that will have the edge removed
- * v2: second vertex that will have the edge removed
+ * v1: vertex that will have v2 removed from its neighbourhood
+ * v2: vertex that will be removed from the neighbourhood of v1
  *
- * returns: 0 if an error has ocurred or 1 if no errors
+ * returns: pointer to the removed edge
  * ------------------------------------------------------------------------------ */
 
-int remove_edge(graph_t *g, vertex_t *v1, vertex_t *v2) ;
+edge_t *remove_edge (vertex_t *v1, vertex_t *v2) ;
 
 /* ------------------------------------------------------------------------------
  * function: search_edge
  * ------------------------------------------------------------------------------
  * search for a specific edge in the vertex
  *
- * g: graph that the vertex and the edge belong to
- * e: specific edge to search
+ * e: edge to search
  * v: vertex to which the edge connects
  *
  * returns: pointer to the edge found or NULL if not found
  * ------------------------------------------------------------------------------ */
 
-edge_t *search_edge(graph_t *g, edge_t *e, vertex_t *v) ;
+edge_t *search_edge (edge_t *e, vertex_t *v) ;
 
 /* ------------------------------------------------------------------------------
  * function: print_graph
@@ -142,21 +154,13 @@ edge_t *search_edge(graph_t *g, edge_t *e, vertex_t *v) ;
  * prints the graph with formatted output
  *
  * g: graph to be printed
+ * is_directed: indicates if the graph is directed (1) or not (0)
+ *
+ * The print_graph function behaves differently if the graph is directed
+ * or undirected.
  * ------------------------------------------------------------------------------ */
 
-void print_graph(graph_t *g) ;
-
-/* ------------------------------------------------------------------------------
- * function: vertex_count
- * ------------------------------------------------------------------------------
- * counts the number of vertices in a graph
- *
- * g: graph to have the vertices counted
- *
- * returns: the number of vertices in that graph
- * ------------------------------------------------------------------------------ */
-
-unsigned int vertex_count(graph_t *g) ;
+void print_graph (graph_t *g, int is_directed) ;
 
 /* ------------------------------------------------------------------------------
  * function: edge_count
@@ -164,45 +168,47 @@ unsigned int vertex_count(graph_t *g) ;
  * counts the number of edges in a graph
  *
  * g: graph to have the edges counted
+ * is_directed: indicates if the graph is directed (1) or not (0)
+ *
+ * The edge_count function behaves differently if the graph is directed
+ * or undirected.
  *
  * returns: the number of edges in that graph
  * ------------------------------------------------------------------------------ */
 
-unsigned int edge_count(graph_t *g) ;
+int edge_count (graph_t *g, int is_directed) ;
 
 /* ------------------------------------------------------------------------------
- * function: get_vertex_by_name
+ * function: get_vertex_by_id
  * ------------------------------------------------------------------------------
- * searches for a vertex with a specific name in a graph
+ * searches for a vertex with a specific id in a graph
  *
  * g: graph in which the vertex will be searched
- * name: name of the vertex to be found
+ * id: vertex id to be found
  *
  * returns: pointer to the vertex found or NULL if not found
  * ------------------------------------------------------------------------------ */
 
-vertex_t *get_vertex_by_name(graph_t *g, char *name) ;
+vertex_t *get_vertex_by_id (graph_t *g, int id) ;
 
 /* ------------------------------------------------------------------------------
  * function: search_neighbourhood
  * ------------------------------------------------------------------------------
- * verifies if there is neighbourhood between two vertices
+ * verifies if if v1 has v2 as a neighbour.
  *
- * g: graph in which the vertices belong
- * v1: first vertex to search
- * v2: second vertex to search
+ * v1: vertex which the neighbourhood will be searched
+ * v2: vertex to search in the neighbourhood of v1
  *
  * returns: 1 if there is neighbourhood or 0 if there is not
  * ------------------------------------------------------------------------------ */
 
-int search_neighbourhood(graph_t *g, vertex_t *v1, vertex_t *v2) ;
+int search_neighbourhood (vertex_t *v1, vertex_t *v2) ;
 
 /* ------------------------------------------------------------------------------
- * function: search_array
+ * function: search_vertex_in_array
  * ------------------------------------------------------------------------------
  * searches for a vertex in an array of vertices
  *
- * g: graph in which the vertex belong to
  * v: vertex to be found
  * array: array of vertices
  * array_size: size of the array
@@ -210,7 +216,7 @@ int search_neighbourhood(graph_t *g, vertex_t *v1, vertex_t *v2) ;
  * returns: 1 if the vertex is found or 0 if it is not found
  * ------------------------------------------------------------------------------ */
 
-int search_vertex_in_array(graph_t *g, vertex_t *v, vertex_t **array, unsigned int array_size) ;
+int search_vertex_in_array (vertex_t *v, vertex_t **array, int array_size) ;
 
 /* ------------------------------------------------------------------------------
  * function: read_graph
@@ -219,11 +225,15 @@ int search_vertex_in_array(graph_t *g, vertex_t *v, vertex_t **array, unsigned i
  *
  * name: name of the graph
  * input: input from which the graph will be read
+ * is_directed: indicates if the graph is directed (1) or not (0)
+ *
+ * The read_graph function behaves differently if the graph is directed
+ * or undirected.
  *
  * returns: pointer to the read graph
  * ------------------------------------------------------------------------------ */
 
-graph_t *read_graph(char *name, FILE *input) ;
+graph_t *read_graph (char *name, FILE *input, int is_directed) ;
 
 /* ------------------------------------------------------------------------------
  * function: write_graph
@@ -232,11 +242,15 @@ graph_t *read_graph(char *name, FILE *input) ;
  *
  * g: graph that will be written
  * output: output in which the graph will be written
+ * is_directed: indicates if the graph is directed (1) or not (0)
+ *
+ * The write_graph function behaves differently if the graph is directed
+ * or undirected.
  *
  * returns: pointer to the written graph or NULL if an error has ocurred
  * ------------------------------------------------------------------------------ */
 
-graph_t *write_graph(graph_t *g, FILE *output) ;
+graph_t *write_graph (graph_t *g, FILE *output, int is_directed) ;
 
 /* ------------------------------------------------------------------------------
  * function: destroy_graph
@@ -248,7 +262,7 @@ graph_t *write_graph(graph_t *g, FILE *output) ;
  * returns: 0 if an error has ocurred or 1 if no errors
  * ------------------------------------------------------------------------------ */
 
-int destroy_graph(graph_t *g) ;
+int destroy_graph (graph_t *g) ;
 
 /* ------------------------------------------------------------------------------ */
 

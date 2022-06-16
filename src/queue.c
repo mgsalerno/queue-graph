@@ -1,25 +1,12 @@
-#include <stdio.h>
 #include "queue.h"
 
 /* ------------------------------------------------------------------------------ */
 
 void queue_append (queue_t **queue, queue_t *elem)
 {
-  if (!queue)
+  if (!queue || !elem)
   {
-    fprintf(stderr, "Error: Queue does not exist\n");
-    return ;
-  }
-
-  if (!elem)
-  {
-    fprintf(stderr, "Error: Element does not exist\n");
-    return ;
-  }
-
-  if (elem->next || elem->prev)
-  {
-    fprintf(stderr, "Error: Element already belongs to another queue\n");
+    fprintf(stderr, "Error: queue_append\n");
     return ;
   }
 
@@ -30,48 +17,27 @@ void queue_append (queue_t **queue, queue_t *elem)
     (*queue)->prev = elem;
     elem->prev = last;
     last->next = elem;
-    return ;
   }
   else
   {
     (*queue) = elem;
     (*queue)->next = (*queue)->prev = elem;
-    return ;
   }
+
+  return ;
 }
 
 /* ------------------------------------------------------------------------------ */
 
 queue_t *queue_remove (queue_t **queue, queue_t *elem)
 {
-  if (!queue)
+  if (!queue || !elem)
   {
-    fprintf(stderr, "Error: Queue does not exist\n");
+    fprintf(stderr, "Error: queue_remove\n");
     return NULL;
   }
 
-  if (!queue_size(*queue))
-  {
-    fprintf(stderr, "Error: Empty queue\n");
-    return NULL;
-  }
-
-  if (!elem)
-  {
-    fprintf(stderr, "Error: Element does not exist\n");
-    return NULL;
-  }
-
-  queue_t *aux = (*queue);
-
-  while (aux->next != (*queue) && aux != elem)
-    aux = aux->next;
-
-  if (aux != elem)
-  {
-    fprintf(stderr, "Error: Element does not belong to the queue\n");
-    return NULL;
-  }
+  queue_t *aux = elem;
 
   if (aux == (*queue)) // if it is the beginning of the queue
     (*queue) = aux->next == aux ? NULL : (*queue)->next; // if it is the only element in the queue
@@ -90,11 +56,10 @@ unsigned int queue_size (queue_t *queue)
 
   if (queue)
   {
-    queue_t *aux = queue;
-
+    queue_t *it = queue;
     do
       size++;
-    while ((aux = aux->next) != queue);
+    while ((it = it->next) != queue);
   }
 
   return size;

@@ -1,246 +1,206 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include "graph.h"
-#include "queue.h"
 
 /* ------------------------------------------------------------------------------ */
 
-graph_t *create_graph(char *name)
+graph_t *create_graph (char *name)
 {
-  graph_t *g;
+  graph_t *g = (graph_t *) malloc(sizeof(graph_t));
 
-  if (!(g = (graph_t *) malloc(sizeof(graph_t))))
-  {
-    perror("memory allocation failed");
-    exit(1);
-  }
-
-  if (!(g->name = (char *) malloc(strlen(name))))
-  {
-    perror("memory allocation failed");
-    exit(1);
-  }
-
-  strncpy(g->name, name, strlen(name));
+  g->name = (char *) calloc(strlen(name), sizeof(char));
+  strcpy(g->name, name);
+  g->vertices = NULL;
+  g->size = 0;
 
   return g;
 }
 
 /* ------------------------------------------------------------------------------ */
 
-int add_vertex(graph_t *g, char *name)
+vertex_t *add_vertex (graph_t *g, int value, int id)
 {
-  if (!g || !name)
-    return 0;
-
-  vertex_t *new_vertex;
-
-  if (!(new_vertex = (vertex_t *) malloc(sizeof(vertex_t))))
-  {
-    perror("memory allocation failed");
-    exit(1);
-  }
-
-  new_vertex->degree = 0;
-
-  if (!(new_vertex->name = (char *) malloc(strlen(name))))
-  {
-    perror("memory allocation failed");
-    exit(1);
-  }
-
-  strncpy(new_vertex->name, name, strlen(name));
-  queue_append((queue_t **) &(g->vertices), (queue_t *) new_vertex);
-  return 1;
-}
-
-/* ------------------------------------------------------------------------------ */
-
-int remove_vertex(graph_t *g, vertex_t *v)
-{
-  if (!g || !v)
-    return 0;
-
-  while(v->edges)
-    remove_edge(g, v, v->edges->vertex); // removes all the edges from the vertex
-
-  free(v->name);
-  free(queue_remove((queue_t **) &(g->vertices), (queue_t *) v)); // removes the vertex
-
-  return 1;
-}
-
-/* ------------------------------------------------------------------------------ */
-
-int add_edge(graph_t *g, vertex_t *v1, vertex_t *v2)
-{
-  if (!g || !v1 || !v2)
-    return 0;
-
-  edge_t *aux_edge;
-
-  if (!(aux_edge = (edge_t *) malloc(sizeof(edge_t))))
-  {
-    perror("memory allocation failed");
-    exit(1);
-  }
-
-  aux_edge->vertex = v2;
-  queue_append((queue_t **) &(v1->edges), (queue_t *) aux_edge); // inserts v2 in v1
-  v1->degree++;
-
-  if (!(aux_edge = (edge_t *) malloc(sizeof(edge_t))))
-  {
-    perror("memory allocation failed");
-    exit(1);
-  }
-
-  aux_edge->vertex = v1;
-  queue_append((queue_t **) &(v2->edges), (queue_t *) aux_edge); // inserts v1 in v2
-  v2->degree++;
-
-  return 1;
-}
-
-/* ------------------------------------------------------------------------------ */
-
-int remove_edge(graph_t *g, vertex_t *v1, vertex_t *v2)
-{
-  if (!g || !v1 || !v2)
-    return 0;
-
-  edge_t *aux_edge;
-
-  if ((aux_edge = search_edge(g, v1->edges, v2)))
-  {
-    free(queue_remove((queue_t **) &(v1->edges), (queue_t *) aux_edge)); // removes v2 from v1
-    v1->degree--;
-  }
-
-  if ((aux_edge = search_edge(g, v2->edges, v1)))
-  {
-    free(queue_remove((queue_t **) &(v2->edges), (queue_t *) aux_edge)); // removes v1 from v2
-    v2->degree--;
-  }
-
-  return 1;
-}
-
-/* ------------------------------------------------------------------------------ */
-
-edge_t *search_edge(graph_t *g, edge_t *e, vertex_t *v)
-{
-  if (!g || !e || !v)
+  if (!g)
     return NULL;
 
-  edge_t *aux_edge = e;
+  vertex_t *new_vertex = (vertex_t *) malloc(sizeof(vertex_t));
 
-  do
-    if (aux_edge->vertex == v) // if the edge is found
-      return aux_edge;
-  while ((aux_edge = aux_edge->next) != e);
+  g->size++;
+
+  new_vertex->next = new_vertex->prev = NULL;
+  new_vertex->edges = NULL;
+  new_vertex->degree = 0;
+  new_vertex->value = value;
+  new_vertex->id = id;
+
+  queue_append((queue_t **) &(g->vertices), (queue_t *) new_vertex);
+  return new_vertex;
+}
+
+/* ------------------------------------------------------------------------------ */
+
+vertex_t *remove_vertex (graph_t *g, vertex_t *v, int is_directed)
+{
+  if (!g || !v)
+    return NULL;
+
+  g->size--;
+
+  while(v->edges) // removes all edges from the vertex
+  {
+    if (is_directed)
+    {
+      free(remove_edge(v->edges->vertex, v));
+      free(queue_remove((queue_t **) &(v->edges), (queue_t *) v->edges));
+    }
+    else
+    {
+      free(remove_edge(v->edges->vertex, v));
+      free(remove_edge(v, v->edges->vertex));
+    }
+  }
+
+  return (vertex_t *) queue_remove((queue_t **) &(g->vertices), (queue_t *) v);
+}
+
+/* ------------------------------------------------------------------------------ */
+
+int add_edge (vertex_t *v1, vertex_t *v2)
+{
+  if (!v1 || !v2)
+    return 0;
+
+  edge_t *new_edge = (edge_t *) malloc(sizeof(edge_t));
+
+  new_edge->vertex = v2;
+  new_edge->next = new_edge->prev = NULL;
+  // inserts v2 in v1
+  queue_append((queue_t **) &(v1->edges), (queue_t *) new_edge);
+  v1->degree++;
+
+  return 1;
+}
+
+/* ------------------------------------------------------------------------------ */
+
+edge_t *remove_edge (vertex_t *v1, vertex_t *v2)
+{
+  if (!v1 || !v2)
+    return NULL;
+
+  edge_t *aux_edge;
+
+  if ((aux_edge = search_edge(v1->edges, v2)))
+  {
+    v1->degree--;
+    // removes v2 from v1
+    return (edge_t *) queue_remove((queue_t **) &(v1->edges), (queue_t *) aux_edge);
+  }
 
   return NULL;
 }
 
 /* ------------------------------------------------------------------------------ */
 
-void print_graph(graph_t *g)
+edge_t *search_edge (edge_t *e, vertex_t *v)
+{
+  if (!e || !v)
+    return NULL;
+
+  edge_t *edge_it = e;
+
+  do
+    if (edge_it->vertex == v) // if the edge is found
+      return edge_it;
+  while ((edge_it = edge_it->next) != e);
+
+  return NULL;
+}
+
+/* ------------------------------------------------------------------------------ */
+
+void print_graph (graph_t *g, int is_directed)
 {
   if (!g)
     return;
 
-  vertex_t *aux_vertex = g->vertices;
-  edge_t *aux_edge;
+  vertex_t *vertex_it = g->vertices;
+  edge_t *edge_it;
 
-  printf(" graph: %s\n", g->name);
+  printf("graph: %s | nodes: %d | edges: %d\n", g->name, g->size, edge_count(g, is_directed));
 
-  for (unsigned int i = 0; i < queue_size((queue_t *) (g->vertices)); ++i)
+  for (int i = 0; i < g->size; ++i)
   {
-    printf("%2d (%s)", i, aux_vertex->name);
+    printf("|(%d)[%2d]|", vertex_it->value, vertex_it->id);
 
-    if ((aux_edge = aux_vertex->edges)) // if there are edges
+    if ((edge_it = vertex_it->edges)) // if there are edges
       do
-        printf(" -> %s", aux_edge->vertex->name);
-      while ((aux_edge = aux_edge->next) != aux_vertex->edges);
+        printf("-> (%d)[%2d]", edge_it->vertex->value, edge_it->vertex->id);
+      while ((edge_it = edge_it->next) != vertex_it->edges);
 
-    aux_vertex = aux_vertex->next;
+    vertex_it = vertex_it->next;
     printf("\n");
   }
 }
 
 /* ------------------------------------------------------------------------------ */
 
-unsigned int vertex_count(graph_t *g)
+int edge_count (graph_t *g, int is_directed)
 {
-  return queue_size((queue_t *) g->vertices);
-}
-
-/* ------------------------------------------------------------------------------ */
-
-unsigned int edge_count(graph_t *g)
-{
-  vertex_t *aux_vertex = g->vertices;
+  vertex_t *vertex_it = g->vertices;
   int sum = 0;
 
   do
-    sum += aux_vertex->degree; // sum all the vertices degrees
-  while ((aux_vertex = aux_vertex->next) != g->vertices);
+    sum += vertex_it->degree; // sum all the vertices degrees
+  while ((vertex_it = vertex_it->next) != g->vertices);
 
-  return (unsigned int) (sum/2);
+  return is_directed ? sum : (sum/2);
 }
 
 /* ------------------------------------------------------------------------------ */
 
-vertex_t *get_vertex_by_name(graph_t *g, char *name)
+vertex_t *get_vertex_by_id (graph_t *g, int id)
 {
-  vertex_t *aux_vertex = g->vertices;
+  if (!g)
+    return NULL;
 
-  for (unsigned int i = 0; i < queue_size((queue_t *) g->vertices); ++i)
-  {
-    if (!strncmp(aux_vertex->name, name, strlen(name))) // if the vertex has that name
-      return aux_vertex;
+  vertex_t *vertex_it = g->vertices;
 
-    aux_vertex = aux_vertex->next;
-  }
+  if (!g->vertices)
+    return NULL;
+
+  do
+    if (vertex_it->id == id) // if the vertex has that id
+      return vertex_it;
+  while ((vertex_it = vertex_it->next) != g->vertices);
 
   return NULL;
 }
 
 /* ------------------------------------------------------------------------------ */
 
-int search_neighbourhood(graph_t *g, vertex_t *v1, vertex_t *v2)
+int search_neighbourhood (vertex_t *v1, vertex_t *v2)
 {
-  if (!g || !v1 || !v2)
+  if (!v1 || !v2)
     return 0;
 
-  int hasEdge = 0;
-  edge_t *aux_edge;
+  edge_t *edge_it;
 
-  if ((aux_edge = v1->edges))
+  if ((edge_it = v1->edges))
     do
-      if (aux_edge->vertex == v2) // checks if v1 has v2 as a neighbour
-        hasEdge++;
-    while ((aux_edge = aux_edge->next) != v1->edges);
+      if (edge_it->vertex == v2) // checks if v1 has v2 as a neighbour
+        return 1;
+    while ((edge_it = edge_it->next) != v1->edges);
 
-  if ((aux_edge = v2->edges))
-    do
-      if (aux_edge->vertex == v1) // checks if v2 has v1 as a neighbour
-        hasEdge++;
-    while ((aux_edge = aux_edge->next) != v2->edges);
-
-  return hasEdge ? 1 : 0; // returns 1 if it has an edge or 0 if it has not
+  return 0;
 }
 
 /* ------------------------------------------------------------------------------ */
 
-int search_vertex_in_array(graph_t *g, vertex_t *v, vertex_t **array, unsigned int array_size)
+int search_vertex_in_array (vertex_t *v, vertex_t **array, int array_size)
 {
-  if (!g || !v || !array)
+  if (!v || !array)
     return 0;
 
-  for (unsigned int i = 0; i < array_size; ++i)
+  for (int i = 0; i < array_size; ++i)
     if (array[i] == v) // if the vertex is found
       return 1;
 
@@ -249,82 +209,83 @@ int search_vertex_in_array(graph_t *g, vertex_t *v, vertex_t **array, unsigned i
 
 /* ------------------------------------------------------------------------------ */
 
-graph_t *read_graph(char *name, FILE *input)
+graph_t *read_graph (char *name, FILE *input, int is_directed)
 {
-  char *graph_name;
+  int rd, nodes[2];
+  char *str = (char *) malloc(256);
 
-  if (!(graph_name = (char *) malloc(strlen(name))))
+  graph_t *g = create_graph(name);
+  vertex_t *v1, *v2;
+
+  while (fgets(str, 256, input))
   {
-    perror("memory allocation failed");
-    exit(1);
+    if (str[0] != '\n')
+    {
+      rd = sscanf(str, "%d %d", &nodes[0], &nodes[1]);
+
+      switch (rd)
+      {
+        case 1:
+          if (!get_vertex_by_id(g, nodes[0]))
+            add_vertex(g, nodes[0], nodes[0]);
+
+          break;
+
+        case 2:
+          if (!(v1 = get_vertex_by_id(g, nodes[0])))
+            v1 = add_vertex(g, nodes[0], nodes[0]);
+
+          if (!(v2 = get_vertex_by_id(g, nodes[1])))
+            v2 = add_vertex(g, nodes[1], nodes[1]);
+
+          if (!search_neighbourhood(v1, v2))
+            add_edge(v1, v2);
+
+          if (!is_directed && !search_neighbourhood(v2, v1))
+            add_edge(v2, v1);
+
+          break;
+
+        default:
+          fprintf(stderr, "Error: Unable to read input\n");
+          exit(1);
+      }
+    }
   }
 
-  strncpy(graph_name, name, strlen(name));
-
-  char *vertex_name[2];
-  char str[STRING_SIZE]; // read input containing the vertices names
-
-  graph_t *g = create_graph(graph_name);
-  vertex_t *vertex_1, *vertex_2;
-
-  while (fgets(str, STRING_SIZE, input) != NULL) // while reads something from the input
-    if (str[0] != '\n') // ignores the line breaks
-      if ((vertex_name[0] = strtok(str, " \n"))) // if there is a vertex
-      {
-        if (!get_vertex_by_name(g, vertex_name[0])) // checks if the vertex already exists
-          add_vertex(g, vertex_name[0]);
-
-        if ((vertex_name[1] = strtok(NULL, " \n"))) // if there is another vertex to add
-        {
-          if (!get_vertex_by_name(g, vertex_name[1]))
-            add_vertex(g, vertex_name[1]);
-
-          vertex_1 = get_vertex_by_name(g, vertex_name[0]);
-          vertex_2 = get_vertex_by_name(g, vertex_name[1]);
-
-          if (!search_neighbourhood(g, vertex_1, vertex_2)) // checks if an edge between the two vertices already exists
-            add_edge(g, vertex_1, vertex_2);
-        }
-      }
-
+  free(str);
   return g;
 }
 
 /* ------------------------------------------------------------------------------ */
 
-graph_t *write_graph(graph_t *g, FILE *output)
+graph_t *write_graph (graph_t *g, FILE *output, int is_directed)
 {
   if (!g || !output)
-  {
-    perror("Output failed");
     return NULL;
-  }
 
-  edge_t *aux_edge;
-  vertex_t *aux_vertex, **visited;
-  unsigned int vertex_list_size = queue_size((queue_t *) g->vertices), i = 0, array_size = 0;
+  edge_t *edge_it;
+  vertex_t *vertex_it;
+  vertex_t **visited = (vertex_t **) malloc(g->size * sizeof(vertex_t *));
 
-  if (!(visited = (vertex_t **) malloc((long unsigned int) vertex_list_size * sizeof(vertex_t *))))
-  {
-    perror("memory allocation failed");
-    exit(1);
-  }
+  int i = 0, array_size = 0;
 
-  if ((aux_vertex = g->vertices))
+  if ((vertex_it = g->vertices))
     do
     {
-      if ((aux_edge = aux_vertex->edges)) // if it has edges
+      if ((edge_it = vertex_it->edges)) // if it has edges
         do
-          if (!search_vertex_in_array(g, aux_edge->vertex, visited, array_size)) // if the vertex was not written
-            fprintf(output, "%s %s\n", aux_vertex->name, aux_edge->vertex->name);
-        while ((aux_edge = aux_edge->next) != aux_vertex->edges);
+          // if the vertex was not written
+          if (is_directed || !search_vertex_in_array(edge_it->vertex, visited, array_size))
+            fprintf(output, "%d %d\n", vertex_it->id, edge_it->vertex->id);
+        while ((edge_it = edge_it->next) != vertex_it->edges);
       else
-        fprintf(output, "%s\n", aux_vertex->name);
+        fprintf(output, "%d\n", vertex_it->id);
 
-      visited[i++] = aux_vertex;
+      visited[i++] = vertex_it;
       array_size++;
     }
-    while ((aux_vertex = aux_vertex->next) != g->vertices);
+    while ((vertex_it = vertex_it->next) != g->vertices);
 
   free(visited);
   return g;
@@ -332,16 +293,17 @@ graph_t *write_graph(graph_t *g, FILE *output)
 
 /* ------------------------------------------------------------------------------ */
 
-int destroy_graph(graph_t * g)
+int destroy_graph (graph_t *g)
 {
   if (!g)
-  {
-    perror("Could not free memory");
     return 0;
-  }
 
   while (g->vertices) // while there is vertices to be removed
-    remove_vertex(g, g->vertices);
+  {
+    while (g->vertices->edges) // while there is edges to be removed
+      free(queue_remove((queue_t **) &(g->vertices->edges), (queue_t *) g->vertices->edges));
+    free(queue_remove((queue_t **) &(g->vertices), (queue_t *) g->vertices));
+  }
 
   free(g->name);
   free(g);
